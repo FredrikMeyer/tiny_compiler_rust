@@ -2,7 +2,7 @@ fn main() {
     println!("Hello, world!");
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Keyword {
     IF,
     ENDIF,
@@ -22,7 +22,7 @@ impl Keyword {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Token {
     EOF,
     SLASH,
@@ -73,9 +73,15 @@ impl Lexer {
         }
     }
 
-    pub fn abort(&self, message: String) {}
+    pub fn abort(&self, _message: String) {}
 
-    pub fn skip_comment(&self) {}
+    pub fn skip_comment(&mut self) {
+        if self.cur_char == Some('#') {
+            while self.cur_char != Some('\n') {
+                self.next_char()
+            }
+        }
+    }
 
     fn skip_whitespace(&mut self) {
         while self.cur_char == Some(' ')
@@ -87,18 +93,18 @@ impl Lexer {
     }
 
     pub fn get_token(&mut self) -> Option<Token> {
-        // kan prøve å ha valid/valid token-klasse
         self.skip_whitespace();
+        self.skip_comment();
 
-        if let Some(c) = self.cur_char {
-            match c {
+        let token: Option<Token> = match self.cur_char {
+            Some(c) => match c {
                 '+' => Some(Token::PLUS),
                 '-' => Some(Token::MINUS),
                 '*' => Some(Token::ASTERISK),
                 '=' => match self.peek() {
                     Some('=') => {
                         self.next_char();
-                        Some(Token::EQ)
+                        Some(Token::EQEQ)
                     }
                     _ => Some(Token::EQ),
                 },
@@ -157,15 +163,27 @@ impl Lexer {
                     return token;
                 }
                 _ => None,
-            }
-        } else {
-            None
-        }
+            },
+            None => Some(Token::EOF),
+        };
+        // self.next_char(); // TODO fix this
+        token
+    }
+}
+
+impl Iterator for Lexer {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let curr = self.cur_char;
+        self.next_char();
+        curr
     }
 }
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -173,27 +191,81 @@ mod tests {
         let test_input = "\
 LET foobar = 123
 ";
-        let mut lexer: Lexer = Lexer::new(&String::from(test_input));
+        let lexer: Lexer = Lexer::new(&String::from(test_input));
 
-        println!("start");
-        while lexer.peek().is_some() {
-            print!("{}", lexer.cur_char.unwrap_or('0'));
-            lexer.next_char();
+        let mut result = String::from("");
+        for c in lexer {
+            result.push(c);
         }
-        println!("\nend");
+
+        assert_eq!(test_input, result);
     }
 
     #[test]
     fn test_read_token() {
-        let input = "+- */ >>= = != 105+123.42\n123 456\n if ifn ";
+        let input = "+- */ > >= = != 105+123.42\n123 456\n if ifn ";
+        let mut lexer = Lexer::new(&String::from(input));
+
+        let mut res_tokens = Vec::new();
+        // while let Some(c) = lexer.get_token() {
+        //     res_tokens.push(c);
+        //     lexer.next_char();
+        // }
+
+        let tokens: Vec<Token> = vec![
+            Token::PLUS,
+            Token::MINUS,
+            Token::ASTERISK,
+            Token::SLASH,
+            Token::GT,
+            Token::GTEQ,
+            Token::EQ,
+            Token::NOTEQ,
+            Token::NUMBER("105".to_string()),
+            Token::PLUS,
+            Token::NUMBER("123.42".to_string()),
+            Token::NEWLINE,
+            Token::NUMBER("123".to_string()),
+            Token::NUMBER("456".to_string()),
+            Token::NEWLINE,
+            Token::KEYWORD(Keyword::IF),
+            Token::IDENTIFIER("ifn".to_string()),
+        ];
+
+        assert_eq!(tokens, res_tokens);
+    }
+
+    #[test]
+    fn test_comment() {
+        let input = "\
++
+# something here
+-
+";
+        let mut lexer = Lexer::new(&String::from(input));
+        let mut res = Vec::new();
+        while lexer.peek().is_some() {
+            if let Some(t) = lexer.get_token() {
+                res.push(t);
+            }
+            lexer.next_char();
+        }
+
+        assert_eq!(res, vec![Token::PLUS, Token::MINUS])
+    }
+
+    #[test]
+    fn test_if_then() {
+        let input = "IF+-123 foo*THEN/";
         let mut lexer = Lexer::new(&String::from(input));
 
         let mut token = lexer.get_token();
         while lexer.peek().is_some() {
-            token = lexer.get_token();
             println!("{:?}", token);
+            token = lexer.get_token();
             lexer.next_char();
         }
-        assert!(false)
+
+        assert!(false);
     }
 }
