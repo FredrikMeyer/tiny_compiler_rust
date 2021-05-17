@@ -207,10 +207,12 @@ LET foobar = 123
         let mut lexer = Lexer::new(&String::from(input));
 
         let mut res_tokens = Vec::new();
-        // while let Some(c) = lexer.get_token() {
-        //     res_tokens.push(c);
-        //     lexer.next_char();
-        // }
+        while lexer.peek().is_some() {
+            if let Some(t) = lexer.get_token() {
+                res_tokens.push(t)
+            }
+            lexer.next_char();
+        }
 
         let tokens: Vec<Token> = vec![
             Token::PLUS,
@@ -251,7 +253,10 @@ LET foobar = 123
             lexer.next_char();
         }
 
-        assert_eq!(res, vec![Token::PLUS, Token::MINUS])
+        assert_eq!(
+            res,
+            vec![Token::PLUS, Token::NEWLINE, Token::NEWLINE, Token::MINUS]
+        )
     }
 
     #[test]
@@ -265,7 +270,5 @@ LET foobar = 123
             token = lexer.get_token();
             lexer.next_char();
         }
-
-        assert!(false);
     }
 }
