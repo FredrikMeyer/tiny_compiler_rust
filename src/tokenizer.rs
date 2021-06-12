@@ -176,46 +176,33 @@ impl Lexer {
 }
 
 impl Iterator for Lexer {
-    type Item = char;
+    type Item = Result<Token, &'static str>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let curr = self.cur_char;
+        if self.peek().is_none() {
+            return None;
+        }
+        let res = self.get_token();
         self.next_char();
-        curr
+        Some(res)
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-
-    #[test]
-    fn one_res() {
-        let test_input = "\
-LET foobar = 123
-";
-        let lexer: Lexer = Lexer::new(&String::from(test_input));
-
-        let mut result = String::from("");
-        for c in lexer {
-            result.push(c);
-        }
-
-        assert_eq!(test_input, result);
-    }
 
     #[test]
     fn test_read_token() {
         let input = "+- */ > >= = != 105+123.42\n123 456\n if ifn ";
-        let mut lexer = Lexer::new(&String::from(input));
+        let lexer = Lexer::new(&String::from(input));
 
         let mut res_tokens = Vec::new();
-        while lexer.peek().is_some() {
-            if let Ok(t) = lexer.get_token() {
-                res_tokens.push(t)
+        for r in lexer {
+            match r {
+                Ok(t) => res_tokens.push(t),
+                Err(_) => panic!(),
             }
-            lexer.next_char();
         }
 
         let tokens: Vec<Token> = vec![
@@ -248,13 +235,14 @@ LET foobar = 123
 # something here
 -
 ";
-        let mut lexer = Lexer::new(&String::from(input));
+        let lexer = Lexer::new(&String::from(input));
         let mut res = Vec::new();
-        while lexer.peek().is_some() {
-            if let Ok(t) = lexer.get_token() {
-                res.push(t);
+
+        for r in lexer {
+            match r {
+                Ok(t) => res.push(t),
+                Err(_) => panic!(),
             }
-            lexer.next_char();
         }
 
         assert_eq!(
@@ -266,13 +254,10 @@ LET foobar = 123
     #[test]
     fn test_if_then() {
         let input = "IF+-123 foo*THEN/";
-        let mut lexer = Lexer::new(&String::from(input));
+        let lexer = Lexer::new(&String::from(input));
 
-        let mut token = lexer.get_token();
-        while lexer.peek().is_some() {
-            println!("{:?}", token);
-            token = lexer.get_token();
-            lexer.next_char();
+        for t in lexer {
+            println!("{:?}", t);
         }
     }
 
@@ -280,15 +265,17 @@ LET foobar = 123
     fn test_read_string() {
         let input = r#""some string""#;
         print!("{:?}", input);
-        let mut lexer = Lexer::new(&String::from(input));
+        let lexer = Lexer::new(&String::from(input));
 
         let mut res = Vec::new();
-        while lexer.peek().is_some() {
-            if let Ok(t) = lexer.get_token() {
-                res.push(t);
+
+        for r in lexer {
+            match r {
+                Ok(t) => res.push(t),
+                Err(_) => panic!(),
             }
-            lexer.next_char();
         }
+
         print!("{:?}", res);
         assert_eq!(res, vec![Token::STRING("some string".to_string())]);
     }

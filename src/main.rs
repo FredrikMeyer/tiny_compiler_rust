@@ -27,6 +27,13 @@ fn main() {
 
     let lexer = tokenizer::Lexer::new(&input);
 
+    for token in lexer {
+        match token {
+            Ok(t) => println!("{:?}", t),
+            Err(s) => println!("{:?}", s),
+        }
+    }
+
     println!("Hello, world!");
 }
 
